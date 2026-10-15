@@ -37,6 +37,7 @@ public class OfflineTest {
         MainActivity activity=(MainActivity)InstrumentationRegistry.getInstrumentation().startActivitySync(new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         InstrumentationRegistry.getInstrumentation().runOnMainSync(()->web=(WebView)((ViewGroup)activity.findViewById(android.R.id.content)).getChildAt(0));
         waitFor("!!document.querySelector('[data-action=\"start\"][data-id=\"compass\"]')");
+        int initialEntries=Integer.parseInt(eval("(()=>{try{return JSON.parse(RabbitNative.loadState()).entries.length}catch(e){return 0}})()"));
         AtomicReference<Boolean> domStorage=new AtomicReference<>();
         InstrumentationRegistry.getInstrumentation().runOnMainSync(()->domStorage.set(web.getSettings().getDomStorageEnabled()));assertFalse(domStorage.get());
         eval("document.querySelector('[data-action=\"start\"][data-id=\"compass\"]').click()");
@@ -53,7 +54,7 @@ public class OfflineTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(()->web.reload());
         waitFor("!window.__beforeReload && !!document.querySelector('[data-key=\"Core0\"][aria-pressed=\"true\"]')");
         eval("window.onerror=function(m){window.__rabbitError=m};window.onunhandledrejection=function(e){window.__rabbitError=String(e.reason)};document.querySelector('[data-action=\"finish\"]').click()");
-        waitFor("JSON.parse(RabbitNative.loadState()).entries.length===1");
+        waitFor("JSON.parse(RabbitNative.loadState()).entries.length==="+(initialEntries+1));
         assertTrue(eval("JSON.parse(RabbitNative.loadState()).entries[0].tool").contains("compass"));
         assertEquals("true",eval("RabbitNative.saveMedia('test-media','aGVsbG8=')"));
         assertEquals("\"aGVsbG8=\"",eval("RabbitNative.loadMedia('test-media')"));

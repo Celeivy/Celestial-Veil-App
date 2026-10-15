@@ -42,6 +42,7 @@ jobs:
           name: Rabbit-Hole-native-template
           path: |
             native-build/app/build/outputs/apk/release/app-release-unsigned.apk
+            native-build/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             native-build/app/build/reports/
             native-build/app/build/outputs/androidTest-results/
           retention-days: 14
