@@ -1,0 +1,78 @@
+name: Rabbit Hole native storage and local packaging
+on:
+  push:
+    branches: [thrh-native-build-20261016]
+    paths: ['native-build/**', '.github/workflows/thrh-native-build.yml']
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36 build-tools;35.0.0 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Compile native wrapper and check lint
+        working-directory: native-build
+        run: gradle --no-daemon assembleRelease assembleDebug lintDebug
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          working-directory: native-build
+          script: gradle --no-daemon connectedDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Rabbit-Hole-native-template
+          path: |
+            native-build/app/build/outputs/apk/release/app-release-unsigned.apk
+            native-build/app/build/reports/
+            native-build/app/build/outputs/androidTest-results/
+          retention-days: 14
+  local-tools:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - name: Prepare minimal Windows packaging tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory local-tools | Out-Null
+          & "$env:JAVA_HOME/bin/jlink.exe" --add-modules java.base,java.logging,java.management,java.naming,java.xml,jdk.crypto.ec --strip-debug --no-header-files --no-man-pages --compress=2 --output local-tools/java
+          if ($LASTEXITCODE -ne 0) { throw 'jlink failed' }
+          Copy-Item "$env:JAVA_HOME/legal" local-tools/java/legal -Recurse -Force
+          Copy-Item "$env:ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" local-tools/apksigner.jar
+          Copy-Item "$env:ANDROID_HOME/build-tools/36.0.0/zipalign.exe" local-tools/zipalign.exe
+          Get-ChildItem "$env:ANDROID_HOME/build-tools/36.0.0" -Filter *.dll | Copy-Item -Destination local-tools
+          & local-tools/java/bin/keytool.exe -help
+          if ($LASTEXITCODE -ne 0) { throw 'keytool missing' }
+          & local-tools/java/bin/java.exe -jar local-tools/apksigner.jar version
+          if ($LASTEXITCODE -ne 0) { throw 'apksigner failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rabbit-Hole-local-packaging-tools
+          path: local-tools/
+          retention-days: 14

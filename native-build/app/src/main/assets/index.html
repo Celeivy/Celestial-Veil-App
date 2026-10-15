@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Native storage fixture</title>
+<body><main></main><script>
+// Synthetic test fixture. Product content is inserted locally after native compilation.
+let state; try { state=JSON.parse(RabbitNative.loadState()); } catch {}
+state ||= {version:2,entries:[],draft:null};
+const main=document.querySelector('main');
+function save(){if(!RabbitNative.saveState(JSON.stringify(state)))throw Error('Save failed');}
+function render(){
+ main.innerHTML=state.draft?'<div class="compass-wrap"><button data-key="Core0">Choose</button><button data-action="finish">Save</button></div>':'<button data-action="start" data-id="compass">Begin fixture</button>';
+ if(state.draft?.data.Core0)main.querySelector('[data-key]').setAttribute('aria-pressed','true');
+}
+main.onclick=e=>{if(e.target.dataset.action==='start'){state.draft={data:{}};save();render();}
+ if(e.target.dataset.key){state.draft.data.Core0=['Enough room for now'];save();render();}
+ if(e.target.dataset.action==='finish'){state.entries.unshift({tool:'compass'});state.draft=null;save();render();}};
+window.rabbitNativeNotice=()=>{};render();
+</script></body></html>
