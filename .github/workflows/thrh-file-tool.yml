@@ -1,0 +1,27 @@
+name: Rabbit Hole file packaging tool
+on:
+  push:
+    branches: [thrh-native-build-20261016]
+    paths: ['.github/workflows/thrh-file-tool.yml']
+permissions:
+  contents: read
+jobs:
+  tool:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download Microsoft AzCopy
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri 'https://aka.ms/downloadazcopy-v10-windows' -OutFile azcopy.zip
+          Expand-Archive -LiteralPath azcopy.zip -DestinationPath azcopy
+          $binary = Get-ChildItem -LiteralPath azcopy -Recurse -Filter azcopy.exe | Select-Object -First 1
+          if (-not $binary) { throw 'AzCopy missing' }
+          New-Item -ItemType Directory artifact | Out-Null
+          Copy-Item -LiteralPath $binary.FullName -Destination artifact/azcopy.exe
+          & artifact/azcopy.exe --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rabbit-Hole-file-transfer-tool
+          path: artifact/
+          retention-days: 7
